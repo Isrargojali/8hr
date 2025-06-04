@@ -5,14 +5,19 @@ WORKDIR /app
 # Install dependencies required for Prisma and wait-for-it script
 RUN apk add --no-cache openssl bash netcat-openbsd
 
+# First copy only package files and install dependencies
 COPY package*.json ./
+
+# Clean npm cache and install dependencies with clean npm cache
+RUN npm cache clean --force && \
+    npm install --production=false --no-package-lock
+
+# Copy prisma files and generate client
 COPY prisma ./prisma/
-
-RUN npm install
-
-COPY . .
-
 RUN npx prisma generate
+
+# Copy the rest of the application
+COPY . .
 
 EXPOSE 3000
 

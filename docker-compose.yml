@@ -20,9 +20,14 @@ services:
     build: 
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
+        - NPM_CONFIG_LOGLEVEL=error
+        - NPM_CONFIG_PRODUCTION=false
     environment:
       DATABASE_URL: postgresql://postgres:israr123@postgres:5432/Arbob
       JWT_SECRET: your_jwt_secret_here
+      NODE_ENV: production
     depends_on:
       - postgres
     ports:
