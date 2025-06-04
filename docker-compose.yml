@@ -11,6 +11,10 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
   backend:
     build: 
@@ -23,6 +27,10 @@ services:
       - postgres
     ports:
       - "3000:3000"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
   frontend:
     build:
@@ -32,6 +40,10 @@ services:
       - "80:80"
     depends_on:
       - backend
+    deploy:
+      resources:
+        limits:
+          memory: 2G
 
 volumes:
   postgres_data: 
