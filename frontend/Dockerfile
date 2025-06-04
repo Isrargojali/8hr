@@ -8,6 +8,8 @@ RUN npm install
 
 COPY arbob-tech-erp-crm/ .
 
+ENV CI=false
+
 RUN npm run build
 
 FROM nginx:alpine
