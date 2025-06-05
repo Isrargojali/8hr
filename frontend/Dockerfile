@@ -2,9 +2,23 @@
 FROM node:16-alpine AS build
 
 WORKDIR /app
+
+# Copy package files
 COPY arbob-tech-erp-crm/package*.json ./
-RUN npm install
+
+# Install dependencies including web-vitals
+RUN npm install web-vitals --save && \
+    npm install --legacy-peer-deps && \
+    npm audit fix --force
+
+# Copy the rest of the application
 COPY arbob-tech-erp-crm/ .
+
+# Set environment variables for build
+ENV GENERATE_SOURCEMAP=false
+ENV CI=false
+
+# Build the application
 RUN npm run build
 
 # Production stage
