@@ -44,11 +44,13 @@ jobs:
 
       - name: Deploy to EC2
         run: |
-          ssh -i ~/.ssh/private.key ubuntu@${{ secrets.EC2_HOST }} '
+          ssh -i ~/.ssh/private.key ec2-user@${{ secrets.EC2_HOST }} '
             # Install Docker if not installed
             if ! command -v docker &> /dev/null; then
-                curl -fsSL https://get.docker.com -o get-docker.sh
-                sudo sh get-docker.sh
+                sudo yum update -y
+                sudo yum install -y docker
+                sudo systemctl start docker
+                sudo systemctl enable docker
                 sudo usermod -aG docker $USER
                 newgrp docker
             fi
