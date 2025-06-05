@@ -2,11 +2,11 @@ FROM node:18-alpine as dependencies
 
 WORKDIR /app
 
-# Copy only package files first
+# Copy package files
 COPY arbob-tech-erp-crm/package*.json ./
 
-# Install dependencies with clean npm cache
-RUN npm cache clean --force && \
+# Install dependencies including web-vitals
+RUN npm install web-vitals --save && \
     npm install --production=false
 
 # Build stage
@@ -14,24 +14,27 @@ FROM node:18-alpine as builder
 
 WORKDIR /app
 
-# Increase Node.js memory limit and set production mode
-ENV NODE_OPTIONS="--max-old-space-size=2048" \
-    NODE_ENV=production \
-    CI=false
-
-# Copy dependencies from previous stage
+# Copy node_modules from dependencies stage
 COPY --from=dependencies /app/node_modules ./node_modules
+
+# Copy the rest of the application
 COPY arbob-tech-erp-crm/ .
 
-# Build with reduced memory usage
+# Set environment variables for build
+ENV GENERATE_SOURCEMAP=false
+ENV CI=false
+
+# Build the application
 RUN npm run build
 
 # Production stage
 FROM nginx:alpine
 
-# Copy built assets and config
+# Copy built assets from builder stage
 COPY --from=builder /app/build /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy nginx configuration
+COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Optimize nginx
 RUN rm -rf /usr/share/nginx/html/static/js/*.map
