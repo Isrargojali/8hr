@@ -1,4 +1,4 @@
-FROM node:18-alpine as dependencies
+FROM node:18-alpine AS dependencies
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ RUN npm install web-vitals --save && \
     npm install --production=false
 
 # Build stage
-FROM node:18-alpine as builder
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
@@ -34,7 +34,7 @@ FROM nginx:alpine
 COPY --from=builder /app/build /usr/share/nginx/html
 
 # Copy nginx configuration
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Optimize nginx
 RUN rm -rf /usr/share/nginx/html/static/js/*.map
