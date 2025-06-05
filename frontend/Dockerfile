@@ -1,43 +1,22 @@
-FROM node:18-alpine AS dependencies
-
-WORKDIR /app
-
-# Copy package files
-COPY arbob-tech-erp-crm/package*.json ./
-
-# Install dependencies including web-vitals
-RUN npm install web-vitals --save && \
-    npm install --production=false
-
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:16-alpine as build
 
 WORKDIR /app
-
-# Copy node_modules from dependencies stage
-COPY --from=dependencies /app/node_modules ./node_modules
-
-# Copy the rest of the application
-COPY arbob-tech-erp-crm/ .
-
-# Set environment variables for build
-ENV GENERATE_SOURCEMAP=false
-ENV CI=false
-
-# Build the application
+COPY package*.json ./
+RUN npm install
+COPY . .
 RUN npm run build
 
 # Production stage
 FROM nginx:alpine
+COPY --from=build /app/build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Remove default nginx static assets
-RUN rm -rf /usr/share/nginx/html/*
+# Add bash for debugging if needed
+RUN apk add --no-cache bash
 
-# Copy built assets from builder stage
-COPY --from=builder /app/build/ /usr/share/nginx/html/
-
-# Copy nginx configuration
-COPY arbob-tech-erp-crm/nginx.conf /etc/nginx/conf.d/default.conf
+# Make sure files are owned by nginx
+RUN chown -R nginx:nginx /usr/share/nginx/html
 
 EXPOSE 80
 
