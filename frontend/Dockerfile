@@ -30,14 +30,14 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
+# Remove default nginx static assets
+RUN rm -rf /usr/share/nginx/html/*
+
 # Copy built assets from builder stage
-COPY --from=builder /app/build /usr/share/nginx/html
+COPY --from=builder /app/build/ /usr/share/nginx/html/
 
 # Copy nginx configuration
-COPY --from=builder /app/nginx.conf /etc/nginx/conf.d/default.conf
-
-# Optimize nginx
-RUN rm -rf /usr/share/nginx/html/static/js/*.map
+COPY arbob-tech-erp-crm/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
