@@ -2,10 +2,10 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Install dependencies required for Prisma
-RUN apk add --no-cache openssl
+# Install necessary tools
+RUN apk add --no-cache openssl netcat-openbsd
 
-# First copy only package files and install dependencies
+# Copy package files and install dependencies
 COPY package*.json ./
 RUN npm install
 
@@ -16,14 +16,10 @@ RUN npx prisma generate
 # Copy the rest of the application
 COPY . .
 
-# Create a simple startup script
-RUN echo '#!/bin/sh\n\
-npx prisma migrate deploy\n\
-npx prisma db seed\n\
-npm start' > /docker-entrypoint.sh
-
+# Make sure entrypoint script is executable
+COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 3000
 
-CMD ["/docker-entrypoint.sh"] 
+ENTRYPOINT ["/docker-entrypoint.sh"] 
