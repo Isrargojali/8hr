@@ -10,6 +10,8 @@ env:
   EC2_USERNAME: ec2-user
   DEPLOY_PATH: /home/ec2-user/arbob-tech-erp
   DOCKER_USERNAME: israrahmad
+  HOST_URL: http://3.109.209.75:3000
+  FRONTEND_URL: http://3.109.209.75
 
 jobs:
   deploy:
@@ -33,6 +35,9 @@ jobs:
           context: ./backend
           push: true
           tags: ${{ env.DOCKER_USERNAME }}/arbob-tech-backend:latest
+          build-args: |
+            HOST_URL=${{ env.HOST_URL }}
+            FRONTEND_URL=${{ env.FRONTEND_URL }}
 
       - name: Build and push frontend
         uses: docker/build-push-action@v3
@@ -40,6 +45,20 @@ jobs:
           context: ./frontend
           push: true
           tags: ${{ env.DOCKER_USERNAME }}/arbob-tech-frontend:latest
+          build-args: |
+            REACT_APP_API_URL=${{ env.HOST_URL }}
+            REACT_APP_BASE_URL=${{ env.FRONTEND_URL }}
+            REACT_APP_API_BASE_URL=${{ env.HOST_URL }}
+
+      - name: Copy docker-compose file
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ env.EC2_HOST }}
+          username: ${{ env.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "docker-compose.new.yml"
+          target: "${{ env.DEPLOY_PATH }}"
+          strip_components: 0
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
@@ -47,6 +66,7 @@ jobs:
           host: ${{ env.EC2_HOST }}
           username: ${{ env.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: DOCKER_USERNAME,DOCKER_TOKEN,HOST_URL,FRONTEND_URL
           script: |
             # Create deployment directory
             mkdir -p ${{ env.DEPLOY_PATH }}
@@ -63,18 +83,12 @@ jobs:
             docker-compose -f docker-compose.new.yml down || true
             docker rm -f $(docker ps -aq) || true
 
-            # Start services
+            # Export environment variables
+            export HOST_URL="${{ env.HOST_URL }}"
+            export FRONTEND_URL="${{ env.FRONTEND_URL }}"
+
+            # Start services with environment variables
             docker-compose -f docker-compose.new.yml up -d
 
             # Verify containers are running
-            docker ps
-
-      - name: Copy docker-compose file
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ env.EC2_HOST }}
-          username: ${{ env.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.new.yml"
-          target: "${{ env.DEPLOY_PATH }}"
-          strip_components: 0 
+            docker ps 

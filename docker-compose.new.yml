@@ -26,8 +26,8 @@ services:
       JWT_SECRET: hello123hdjmaKJGVSFFSKHKHSK
       NODE_ENV: production
       PORT: 3000
-      HOST_URL: http://3.109.209.75:3000
-      CORS_ORIGIN: http://3.109.209.75
+      HOST_URL: ${HOST_URL:-http://3.109.209.75:3000}
+      CORS_ORIGIN: ${FRONTEND_URL:-http://3.109.209.75}
     ports:
       - "3000:3000"
     restart: always
@@ -42,8 +42,9 @@ services:
     image: israrahmad/arbob-tech-frontend:latest
     environment:
       NODE_ENV: production
-      REACT_APP_API_URL: http://3.109.209.75:3000
-      REACT_APP_BASE_URL: http://3.109.209.75
+      REACT_APP_API_URL: ${HOST_URL:-http://3.109.209.75:3000}
+      REACT_APP_BASE_URL: ${FRONTEND_URL:-http://3.109.209.75}
+      REACT_APP_API_BASE_URL: ${HOST_URL:-http://3.109.209.75:3000}
     ports:
       - "80:80"
     restart: always
