@@ -70,6 +70,6 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /home/ubuntu/arbob-tech
+            cd /home/ec2-user/arbob-tech-erp
             chmod +x deploy.sh
-            ./deploy.sh 
+            sudo ./deploy.sh 
