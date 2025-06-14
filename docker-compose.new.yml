@@ -13,9 +13,10 @@ services:
       - app-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 30s
-      timeout: 10s
+      interval: 10s
+      timeout: 5s
       retries: 5
+      start_period: 10s
 
   backend:
     container_name: arbob-backend-prod
@@ -35,15 +36,6 @@ services:
         condition: service_healthy
     networks:
       - app-network
-    command: >
-      sh -c "
-        echo 'Waiting for postgres...' &&
-        while ! nc -z postgres 5432; do
-          sleep 1
-        done &&
-        echo 'PostgreSQL started' &&
-        npm start
-      "
 
   frontend:
     container_name: arbob-frontend-prod
@@ -52,7 +44,6 @@ services:
       NODE_ENV: production
       REACT_APP_API_URL: http://3.109.209.75:3000
       REACT_APP_BASE_URL: http://3.109.209.75
-      PORT: 80
     ports:
       - "80:80"
     restart: always
