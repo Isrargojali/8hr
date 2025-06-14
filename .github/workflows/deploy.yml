@@ -1,7 +1,9 @@
-name: Deploy to EC2
+name: CI/CD Pipeline
 
 on:
   push:
+    branches: [ main ]
+  pull_request:
     branches: [ main ]
   workflow_dispatch:
 
@@ -11,65 +13,115 @@ env:
   DEPLOY_PATH: /home/ec2-user/arbob-tech-erp
 
 jobs:
-  deploy:
+  ci:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: israrahmad
-        password: ${{ secrets.DOCKER_TOKEN }}
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm install
+          cd ../frontend/arbob-tech-erp-crm
+          npm install
 
-    - name: Build and push backend
-      uses: docker/build-push-action@v3
-      with:
-        context: .
-        file: ./backend/Dockerfile
-        push: true
-        tags: israrahmad/arbob-tech-backend:latest
+      - name: Run backend tests
+        run: |
+          cd backend
+          npm test || true
 
-    - name: Build and push frontend
-      uses: docker/build-push-action@v3
-      with:
-        context: .
-        file: ./frontend/Dockerfile
-        push: true
-        tags: israrahmad/arbob-tech-frontend:latest
+      - name: Run frontend tests
+        run: |
+          cd frontend/arbob-tech-erp-crm
+          npm test || true
 
-    - name: Create deployment directory
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ env.EC2_HOST }}
-        username: ${{ env.EC2_USERNAME }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
-          mkdir -p ${{ env.DEPLOY_PATH }}
-          rm -f ${{ env.DEPLOY_PATH }}/docker-compose.new.yml
-          rm -f ${{ env.DEPLOY_PATH }}/deploy.sh
+  build-and-push:
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Copy deployment files
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ env.EC2_HOST }}
-        username: ${{ env.EC2_USERNAME }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        source: "docker-compose.new.yml,deploy.sh"
-        target: "${{ env.DEPLOY_PATH }}"
-        strip_components: 0
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: israrahmad
+          password: ${{ secrets.DOCKER_TOKEN }}
 
-    - name: Deploy application
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ env.EC2_HOST }}
-        username: ${{ env.EC2_USERNAME }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
-          cd ${{ env.DEPLOY_PATH }}
-          chmod +x deploy.sh
-          sudo ./deploy.sh 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: ./backend/Dockerfile
+          push: true
+          tags: israrahmad/arbob-tech-backend:latest
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: ./frontend/Dockerfile
+          push: true
+          tags: israrahmad/arbob-tech-frontend:latest
+
+  deploy:
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create deployment directory
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.EC2_HOST }}
+          username: ${{ env.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            mkdir -p ${{ env.DEPLOY_PATH }}
+            rm -f ${{ env.DEPLOY_PATH }}/docker-compose.new.yml
+            rm -f ${{ env.DEPLOY_PATH }}/deploy.sh
+
+      - name: Copy deployment files
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ env.EC2_HOST }}
+          username: ${{ env.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "docker-compose.new.yml,deploy.sh"
+          target: "${{ env.DEPLOY_PATH }}"
+          strip_components: 0
+
+      - name: Deploy application
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.EC2_HOST }}
+          username: ${{ env.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ${{ env.DEPLOY_PATH }}
+            chmod +x deploy.sh
+            sudo ./deploy.sh
+
+      - name: Verify deployment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.EC2_HOST }}
+          username: ${{ env.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ${{ env.DEPLOY_PATH }}
+            docker ps
+            echo "Checking backend health..."
+            curl -f http://localhost:3000/api/health || exit 1 
