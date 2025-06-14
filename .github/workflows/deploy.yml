@@ -130,6 +130,7 @@ jobs:
     needs: [create-release, version]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -139,13 +140,39 @@ jobs:
           sed -i "s|israrahmad/arbob-tech-backend:latest|${{ env.DOCKER_USERNAME }}/arbob-tech-backend:${{ needs.version.outputs.new_version }}|g" docker-compose.new.yml
           sed -i "s|israrahmad/arbob-tech-frontend:latest|${{ env.DOCKER_USERNAME }}/arbob-tech-frontend:${{ needs.version.outputs.new_version }}|g" docker-compose.new.yml
 
-      - name: Create deployment directory
+      - name: Check SSH connection
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.EC2_HOST }}
           username: ${{ env.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            echo "SSH connection successful"
+            docker --version || echo "Docker not found"
+            docker-compose --version || echo "Docker Compose not found"
+
+      - name: Setup EC2 environment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.EC2_HOST }}
+          username: ${{ env.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Install or update Docker if needed
+            if ! command -v docker &> /dev/null; then
+              sudo yum update -y
+              sudo yum install -y docker
+              sudo service docker start
+              sudo usermod -a -G docker ${{ env.EC2_USERNAME }}
+            fi
+            
+            # Install or update Docker Compose if needed
+            if ! command -v docker-compose &> /dev/null; then
+              sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
+            fi
+            
+            # Create deployment directory
             mkdir -p ${{ env.DEPLOY_PATH }}
             rm -f ${{ env.DEPLOY_PATH }}/docker-compose.new.yml
             rm -f ${{ env.DEPLOY_PATH }}/deploy.sh
@@ -166,10 +193,13 @@ jobs:
           host: ${{ env.EC2_HOST }}
           username: ${{ env.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: DOCKER_USERNAME,DOCKER_TOKEN
           script: |
             cd ${{ env.DEPLOY_PATH }}
             chmod +x deploy.sh
-            sudo ./deploy.sh
+            export DOCKER_USERNAME="${{ env.DOCKER_USERNAME }}"
+            export DOCKER_TOKEN="${{ secrets.DOCKER_TOKEN }}"
+            sudo -E ./deploy.sh
 
       - name: Verify deployment
         uses: appleboy/ssh-action@v1.0.3
@@ -179,9 +209,20 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ${{ env.DEPLOY_PATH }}
-            docker ps
+            # Check if containers are running
+            if ! docker ps | grep -q "arbob-backend-prod"; then
+              echo "Backend container not running"
+              exit 1
+            fi
+            if ! docker ps | grep -q "arbob-frontend-prod"; then
+              echo "Frontend container not running"
+              exit 1
+            fi
+            # Check backend health
             echo "Checking backend health..."
             curl -f http://localhost:3000/api/health || exit 1
+            echo "Checking frontend accessibility..."
+            curl -f http://localhost:80 || exit 1
             echo "Deployment verified successfully!"
 
   notify:
