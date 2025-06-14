@@ -102,32 +102,8 @@ jobs:
             ${{ env.DOCKER_USERNAME }}/arbob-tech-frontend:latest
             ${{ env.DOCKER_USERNAME }}/arbob-tech-frontend:${{ needs.version.outputs.new_version }}
 
-  create-release:
-    needs: [build-and-push, version]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Create Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ needs.version.outputs.new_version }}
-          release_name: Release v${{ needs.version.outputs.new_version }}
-          body: |
-            Automated release v${{ needs.version.outputs.new_version }}
-            
-            Images:
-            - Backend: ${{ env.DOCKER_USERNAME }}/arbob-tech-backend:${{ needs.version.outputs.new_version }}
-            - Frontend: ${{ env.DOCKER_USERNAME }}/arbob-tech-frontend:${{ needs.version.outputs.new_version }}
-          draft: false
-          prerelease: false
-
   deploy:
-    needs: [create-release, version]
+    needs: [build-and-push, version]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
