@@ -10,6 +10,8 @@ env:
   EC2_USERNAME: ec2-user
   DEPLOY_PATH: /home/ec2-user/arbob-tech-erp
   DOCKER_USERNAME: israrahmad
+  API_URL: http://3.109.209.75:3000
+  PUBLIC_URL: http://3.109.209.75
 
 jobs:
   deploy:
@@ -39,9 +41,9 @@ jobs:
             HOST=0.0.0.0
             DATABASE_URL=postgresql://postgres:israr123@postgres:5432/Arbob?schema=public
             JWT_SECRET=hello123hdjmaKJGVSFFSKHKHSK
-            HOST_URL=http://3.109.209.75:3000
-            CORS_ORIGIN=http://3.109.209.75
-            API_URL=http://3.109.209.75:3000/api
+            HOST_URL=${{ env.API_URL }}
+            CORS_ORIGIN=${{ env.PUBLIC_URL }}
+            API_URL=${{ env.API_URL }}
 
       - name: Build and push frontend
         uses: docker/build-push-action@v3
@@ -50,14 +52,11 @@ jobs:
           push: true
           tags: ${{ env.DOCKER_USERNAME }}/arbob-tech-frontend:latest
           build-args: |
-            REACT_APP_API_URL=http://3.109.209.75:3000
-            REACT_APP_BASE_URL=http://3.109.209.75
-            REACT_APP_API_BASE_URL=http://3.109.209.75
-      
-
-
-     
-            REACT_APP_BACKEND_URL=http://3.109.209.75:3000
+            REACT_APP_API_URL=${{ env.API_URL }}
+            REACT_APP_BASE_URL=${{ env.API_URL }}
+            REACT_APP_API_BASE_URL=${{ env.API_URL }}
+            REACT_APP_BACKEND_URL=${{ env.API_URL }}
+            PUBLIC_URL=${{ env.PUBLIC_URL }}
             NODE_ENV=production
 
       - name: Copy deployment files
@@ -126,6 +125,10 @@ jobs:
               echo "Retrying in 10 seconds..."
               sleep 10
             done
+
+            # Check frontend configuration
+            echo "Frontend configuration:"
+            docker exec arbob-frontend-prod env | grep REACT_APP
 
             echo "Deployment completed successfully!"
             docker ps 

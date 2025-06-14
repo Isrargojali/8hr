@@ -31,7 +31,7 @@ services:
       HOST: 0.0.0.0
       HOST_URL: http://3.109.209.75:3000
       CORS_ORIGIN: http://3.109.209.75
-      API_URL: http://3.109.209.75:3000/api
+      API_URL: http://3.109.209.75:3000
     ports:
       - "3000:3000"
     restart: always
@@ -53,9 +53,10 @@ services:
     environment:
       NODE_ENV: production
       REACT_APP_API_URL: http://3.109.209.75:3000
-      REACT_APP_BASE_URL: http://3.109.209.75
-      REACT_APP_API_BASE_URL: http://3.109.209.75:3000/api
+      REACT_APP_BASE_URL: http://3.109.209.75:3000
+      REACT_APP_API_BASE_URL: http://3.109.209.75:3000
       REACT_APP_BACKEND_URL: http://3.109.209.75:3000
+      PUBLIC_URL: http://3.109.209.75
     ports:
       - "80:80"
     restart: always
