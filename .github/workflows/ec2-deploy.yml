@@ -10,8 +10,6 @@ env:
   EC2_USERNAME: ec2-user
   DEPLOY_PATH: /home/ec2-user/arbob-tech-erp
   DOCKER_USERNAME: israrahmad
-  HOST_URL: http://3.109.209.75:3000
-  FRONTEND_URL: http://3.109.209.75
 
 jobs:
   deploy:
@@ -19,6 +17,29 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Create env files
+        run: |
+          # Create backend .env
+          cat > backend/.env << EOL
+          DATABASE_URL=postgresql://postgres:israr123@postgres:5432/Arbob?schema=public
+          JWT_SECRET=hello123hdjmaKJGVSFFSKHKHSK
+          NODE_ENV=production
+          PORT=3000
+          HOST=0.0.0.0
+          HOST_URL=http://3.109.209.75:3000
+          CORS_ORIGIN=http://3.109.209.75
+          API_URL=http://3.109.209.75:3000/api
+          EOL
+
+          # Create frontend .env
+          cat > frontend/arbob-tech-erp-crm/.env << EOL
+          REACT_APP_API_URL=http://3.109.209.75:3000
+          REACT_APP_BASE_URL=http://3.109.209.75
+          REACT_APP_API_BASE_URL=http://3.109.209.75:3000/api
+          REACT_APP_BACKEND_URL=http://3.109.209.75:3000
+          NODE_ENV=production
+          EOL
 
       - name: Login to Docker Hub
         uses: docker/login-action@v2
@@ -36,8 +57,12 @@ jobs:
           push: true
           tags: ${{ env.DOCKER_USERNAME }}/arbob-tech-backend:latest
           build-args: |
-            HOST_URL=${{ env.HOST_URL }}
-            FRONTEND_URL=${{ env.FRONTEND_URL }}
+            NODE_ENV=production
+            PORT=3000
+            HOST=0.0.0.0
+            HOST_URL=http://3.109.209.75:3000
+            CORS_ORIGIN=http://3.109.209.75
+            API_URL=http://3.109.209.75:3000/api
 
       - name: Build and push frontend
         uses: docker/build-push-action@v3
@@ -46,17 +71,41 @@ jobs:
           push: true
           tags: ${{ env.DOCKER_USERNAME }}/arbob-tech-frontend:latest
           build-args: |
-            REACT_APP_API_URL=${{ env.HOST_URL }}
-            REACT_APP_BASE_URL=${{ env.FRONTEND_URL }}
-            REACT_APP_API_BASE_URL=${{ env.HOST_URL }}
+            REACT_APP_API_URL=http://3.109.209.75:3000
+            REACT_APP_BASE_URL=http://3.109.209.75
+            REACT_APP_API_BASE_URL=http://3.109.209.75:3000/api
+            REACT_APP_BACKEND_URL=http://3.109.209.75:3000
+            NODE_ENV=production
 
-      - name: Copy docker-compose file
+      - name: Create deployment directory and env files on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.EC2_HOST }}
+          username: ${{ env.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            mkdir -p ${{ env.DEPLOY_PATH }}
+            cd ${{ env.DEPLOY_PATH }}
+
+            # Create backend .env
+            cat > .env << EOL
+            DATABASE_URL=postgresql://postgres:israr123@postgres:5432/Arbob?schema=public
+            JWT_SECRET=hello123hdjmaKJGVSFFSKHKHSK
+            NODE_ENV=production
+            PORT=3000
+            HOST=0.0.0.0
+            HOST_URL=http://3.109.209.75:3000
+            CORS_ORIGIN=http://3.109.209.75
+            API_URL=http://3.109.209.75:3000/api
+            EOL
+
+      - name: Copy deployment files
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ env.EC2_HOST }}
           username: ${{ env.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.new.yml"
+          source: "docker-compose.new.yml,.env"
           target: "${{ env.DEPLOY_PATH }}"
           strip_components: 0
 
@@ -66,10 +115,7 @@ jobs:
           host: ${{ env.EC2_HOST }}
           username: ${{ env.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: DOCKER_USERNAME,DOCKER_TOKEN,HOST_URL,FRONTEND_URL
           script: |
-            # Create deployment directory
-            mkdir -p ${{ env.DEPLOY_PATH }}
             cd ${{ env.DEPLOY_PATH }}
 
             # Login to Docker Hub
@@ -83,12 +129,24 @@ jobs:
             docker-compose -f docker-compose.new.yml down || true
             docker rm -f $(docker ps -aq) || true
 
-            # Export environment variables
-            export HOST_URL="${{ env.HOST_URL }}"
-            export FRONTEND_URL="${{ env.FRONTEND_URL }}"
-
-            # Start services with environment variables
+            # Start services with env file
             docker-compose -f docker-compose.new.yml up -d
 
-            # Verify containers are running
+            # Wait for services to start
+            echo "Waiting for services to start..."
+            sleep 30
+
+            # Check backend logs
+            echo "Backend logs:"
+            docker logs arbob-backend-prod
+
+            # Verify backend is responding
+            echo "Checking backend health..."
+            curl -f http://localhost:3000/api/health || {
+              echo "Backend health check failed"
+              docker logs arbob-backend-prod
+              exit 1
+            }
+
+            echo "Deployment completed successfully!"
             docker ps 
