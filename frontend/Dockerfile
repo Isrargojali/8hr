@@ -1,29 +1,40 @@
-FROM node:16-alpine
+FROM node:18-alpine as builder
 
 WORKDIR /app
 
 # Copy package files
-COPY arbob-tech-erp-crm/package*.json ./
+COPY package*.json ./
+RUN npm install
 
-# Install dependencies with specific flags to maintain essential packages
-RUN npm install --legacy-peer-deps && \
-    npm install web-vitals@3.5.0 --save && \
-    npm install react-scripts@5.0.1 --save && \
-    npm install @babel/plugin-proposal-private-property-in-object --save-dev && \
-    npm install -g serve
+# Copy source code
+COPY . .
 
-# Copy the rest of the application
-COPY arbob-tech-erp-crm/ .
+# Set build time arguments
+ARG REACT_APP_API_URL
+ARG REACT_APP_BASE_URL
+ARG REACT_APP_API_BASE_URL
+ARG REACT_APP_BACKEND_URL
+ARG PUBLIC_URL
 
-# Set environment variables for build
-ENV GENERATE_SOURCEMAP=false
-ENV CI=false
-ENV NODE_ENV=production
+# Set environment variables
+ENV REACT_APP_API_URL=${REACT_APP_API_URL}
+ENV REACT_APP_BASE_URL=${REACT_APP_BASE_URL}
+ENV REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}
+ENV REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL}
+ENV PUBLIC_URL=${PUBLIC_URL}
 
 # Build the application
 RUN npm run build
 
+# Production stage
+FROM nginx:alpine
+
+# Copy the build output
+COPY --from=builder /app/build /usr/share/nginx/html
+
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
 EXPOSE 80
 
-# Start static file server
-CMD ["serve", "-s", "build", "-l", "80"] 
+CMD ["nginx", "-g", "daemon off;"] 
