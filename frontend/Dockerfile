@@ -26,6 +26,9 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
+# Install necessary tools
+RUN apk add --no-cache bash netcat-openbsd
+
 # Create necessary directories
 RUN mkdir -p /etc/nginx/conf.d
 
@@ -35,16 +38,14 @@ COPY --from=build /app/build /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Add bash for debugging if needed
-RUN apk add --no-cache bash
-
 # Make sure files are owned by nginx
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
     chown -R nginx:nginx /etc/nginx/conf.d
 
-# Verify nginx configuration
-RUN nginx -t
+# Create startup script
+COPY docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"] 
+ENTRYPOINT ["/docker-entrypoint.sh"] 
