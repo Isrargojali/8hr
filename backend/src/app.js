@@ -47,4 +47,9 @@ app.use('/project', apiLimiter, projectRoutes);
 app.use('/advance-salary', apiLimiter, advanceSalaryRoutes);
 app.use('/users', apiLimiter, userRoutes);
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'healthy' });
+});
+
 export default app;

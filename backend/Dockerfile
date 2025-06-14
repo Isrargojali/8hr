@@ -8,6 +8,7 @@ RUN apk add --no-cache \
     netcat-openbsd \
     postgresql-client \
     bash \
+    wget \
     && rm -rf /var/cache/apk/*
 
 # Copy package files and install dependencies
