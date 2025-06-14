@@ -9,11 +9,6 @@ services:
       POSTGRES_DB: Arbob
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     restart: always
     networks:
       - app-network
@@ -27,23 +22,11 @@ services:
       PORT: 3000
       HOST_URL: http://3.109.209.75:3000
       CORS_ORIGIN: http://3.109.209.75
-    command: >
-      sh -c "
-        echo 'Waiting for postgres...' &&
-        while ! nc -z postgres 5432; do
-          sleep 1
-        done &&
-        echo 'Database is ready!' &&
-        npx prisma migrate deploy &&
-        npx prisma db seed &&
-        npm start
-      "
-    depends_on:
-      postgres:
-        condition: service_healthy
     ports:
       - "3000:3000"
     restart: always
+    depends_on:
+      - postgres
     networks:
       - app-network
 
@@ -58,9 +41,9 @@ services:
       - ./proxy_params:/etc/nginx/proxy_params:ro
     ports:
       - "80:80"
+    restart: always
     depends_on:
       - backend
-    restart: always
     networks:
       - app-network
 
