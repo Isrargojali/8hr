@@ -1,4 +1,3 @@
-# Build and run stage
 FROM node:16-alpine
 
 WORKDIR /app
@@ -11,7 +10,7 @@ RUN npm install --legacy-peer-deps && \
     npm install web-vitals@3.5.0 --save && \
     npm install react-scripts@5.0.1 --save && \
     npm install @babel/plugin-proposal-private-property-in-object --save-dev && \
-    npm install serve -g
+    npm install -g serve
 
 # Copy the rest of the application
 COPY arbob-tech-erp-crm/ .
