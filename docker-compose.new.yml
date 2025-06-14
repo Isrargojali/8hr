@@ -52,8 +52,6 @@ services:
       NODE_ENV: production
       REACT_APP_API_URL: http://3.109.209.75:3000
       REACT_APP_BASE_URL: http://3.109.209.75
-    volumes:
-      - /home/ec2-user/arbob-tech-erp/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "80:80"
     restart: always

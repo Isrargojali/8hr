@@ -29,22 +29,28 @@ FROM nginx:alpine
 # Install necessary tools
 RUN apk add --no-cache bash netcat-openbsd
 
-# Create necessary directories
+# Create nginx configuration
 RUN mkdir -p /etc/nginx/conf.d
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy build files
 COPY --from=build /app/build /usr/share/nginx/html
-
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Make sure files are owned by nginx
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
     chown -R nginx:nginx /etc/nginx/conf.d
 
 # Create startup script
-COPY docker-entrypoint.sh /
-RUN chmod +x /docker-entrypoint.sh
+RUN echo '#!/bin/sh' > /docker-entrypoint.sh && \
+    echo 'set -e' >> /docker-entrypoint.sh && \
+    echo 'echo "Waiting for backend..."' >> /docker-entrypoint.sh && \
+    echo 'while ! nc -z arbob-backend-prod 3000; do' >> /docker-entrypoint.sh && \
+    echo '    sleep 1' >> /docker-entrypoint.sh && \
+    echo 'done' >> /docker-entrypoint.sh && \
+    echo 'echo "Backend is up!"' >> /docker-entrypoint.sh && \
+    echo 'echo "Starting nginx..."' >> /docker-entrypoint.sh && \
+    echo 'exec nginx -g "daemon off;"' >> /docker-entrypoint.sh && \
+    chmod +x /docker-entrypoint.sh
 
 EXPOSE 80
 
