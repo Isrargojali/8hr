@@ -42,13 +42,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Copy files to EC2
+      - name: Setup deployment directory on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            mkdir -p /home/ubuntu/arbob-tech
+            rm -f /home/ubuntu/arbob-tech/docker-compose.new.yml
+            rm -f /home/ubuntu/arbob-tech/deploy.sh
+
+      - name: Copy deployment files to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ env.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.new.yml,nginx.conf,proxy_params,deploy.sh"
+          source: "docker-compose.new.yml,deploy.sh"
           target: "/home/ubuntu/arbob-tech"
           strip_components: 0
 
@@ -60,5 +71,5 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /home/ubuntu/arbob-tech
-            docker-compose -f docker-compose.new.yml pull
-            docker-compose -f docker-compose.new.yml up -d 
+            chmod +x deploy.sh
+            ./deploy.sh 

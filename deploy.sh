@@ -1,42 +1,29 @@
 #!/bin/bash
+set -e
 
-# Set the host URL for the deployment
-export HOST_URL=http://3.109.209.75
+echo "🔄 Starting deployment process..."
 
-# Stop any running containers
-docker-compose down
+# Stop running containers
+echo "Stopping existing containers..."
+docker-compose -f docker-compose.new.yml down || true
 
-# Remove old docker-compose.yml if it exists
-rm -f docker-compose.yml
-
-# Copy the new docker-compose file
-cp docker-compose.new.yml docker-compose.yml
-
-# Make sure nginx.conf exists in the current directory
-if [ ! -f nginx.conf ]; then
-    cp frontend/nginx.conf nginx.conf
-fi
+# Remove old containers and images
+echo "Cleaning up old containers and images..."
+docker system prune -f
 
 # Pull latest images
-docker-compose pull
+echo "Pulling latest images..."
+docker pull israrahmad/arbob-tech-backend:latest
+docker pull israrahmad/arbob-tech-frontend:latest
+
+# Create necessary directories if they don't exist
+echo "Setting up directories..."
+mkdir -p /home/ubuntu/arbob-tech/data
 
 # Start services
-docker-compose up -d
+echo "Starting services..."
+docker-compose -f docker-compose.new.yml up -d
 
-# Show status
-docker-compose ps
-
-# Wait for backend to be ready
-echo "Waiting for backend to be ready..."
-sleep 30
-
-# Check backend logs for migration and seeding status
-echo "Checking database migration and seeding status..."
-docker-compose logs backend | grep -E "prisma|seed|Database is ready"
-
-echo "Deployment completed. Your application should be accessible at:"
-echo "Frontend: $HOST_URL"
-echo "Backend: $HOST_URL:3000"
-echo ""
-echo "To view logs, run: docker-compose logs -f"
-echo "To check database status again, run: docker-compose logs backend | grep -E 'prisma|seed|Database is ready'" 
+echo "✅ Deployment completed!"
+echo "Frontend: http://3.109.209.75"
+echo "Backend: http://3.109.209.75:3000" 
