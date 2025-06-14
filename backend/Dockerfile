@@ -2,35 +2,20 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Install necessary tools and dependencies
-RUN apk add --no-cache \
-    openssl \
-    netcat-openbsd \
-    postgresql-client \
-    bash \
-    wget \
-    && rm -rf /var/cache/apk/*
-
 # Copy package files and install dependencies
 COPY package*.json ./
-RUN npm install --production=false
+RUN npm install
 
 # Copy prisma files and generate client
 COPY prisma ./prisma/
-
-# Generate Prisma Client
 RUN npx prisma generate
 
 # Copy the rest of the application
 COPY . .
-
-# Make sure entrypoint script is executable
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 3000
 
 ENV NODE_ENV=production
 ENV PORT=3000
 
-ENTRYPOINT ["/docker-entrypoint.sh"] 
+CMD ["npm", "start"] 

@@ -3,27 +3,38 @@ set -e
 
 echo "🔄 Starting deployment process..."
 
-# Stop running containers
-echo "Stopping existing containers..."
-docker-compose -f docker-compose.new.yml down || true
+# Stop and remove all containers
+echo "Stopping and removing all containers..."
+docker-compose -f docker-compose.new.yml down --remove-orphans
+docker rm -f $(docker ps -aq) || true
 
-# Remove old containers and images
-echo "Cleaning up old containers and images..."
-docker system prune -f
+# Remove all images
+echo "Removing all images..."
+docker rmi -f $(docker images -q) || true
 
 # Pull latest images
 echo "Pulling latest images..."
 docker pull israrahmad/arbob-tech-backend:latest
 docker pull israrahmad/arbob-tech-frontend:latest
 
-# Create necessary directories if they don't exist
-echo "Setting up directories..."
-mkdir -p /home/ubuntu/arbob-tech/data
+# Start postgres first
+echo "Starting PostgreSQL..."
+docker-compose -f docker-compose.new.yml up -d postgres
+sleep 10
 
-# Start services
-echo "Starting services..."
-docker-compose -f docker-compose.new.yml up -d
+# Start backend
+echo "Starting Backend..."
+docker-compose -f docker-compose.new.yml up -d backend
+sleep 10
+
+# Start frontend
+echo "Starting Frontend..."
+docker-compose -f docker-compose.new.yml up -d frontend
 
 echo "✅ Deployment completed!"
 echo "Frontend: http://3.109.209.75"
-echo "Backend: http://3.109.209.75:3000" 
+echo "Backend: http://3.109.209.75:3000"
+
+# Show logs
+echo "📝 Backend Logs:"
+docker logs arbob-backend-prod 

@@ -13,10 +13,9 @@ services:
       - app-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
+      interval: 30s
+      timeout: 10s
       retries: 5
-      start_period: 10s
 
   backend:
     container_name: arbob-backend-prod
@@ -36,12 +35,15 @@ services:
         condition: service_healthy
     networks:
       - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
-      interval: 20s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+    command: >
+      sh -c "
+        echo 'Waiting for postgres...' &&
+        while ! nc -z postgres 5432; do
+          sleep 1
+        done &&
+        echo 'PostgreSQL started' &&
+        npm start
+      "
 
   frontend:
     container_name: arbob-frontend-prod
@@ -54,8 +56,7 @@ services:
       - "80:80"
     restart: always
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
     networks:
       - app-network
 
