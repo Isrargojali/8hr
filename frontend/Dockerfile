@@ -26,15 +26,24 @@ RUN npm run build
 # Production stage
 FROM nginx:alpine
 
-# Copy build files and nginx configuration
+# Create necessary directories
+RUN mkdir -p /etc/nginx/conf.d
+
+# Copy build files
 COPY --from=build /app/build /usr/share/nginx/html
+
+# Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Add bash for debugging if needed
 RUN apk add --no-cache bash
 
 # Make sure files are owned by nginx
-RUN chown -R nginx:nginx /usr/share/nginx/html
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /etc/nginx/conf.d
+
+# Verify nginx configuration
+RUN nginx -t
 
 EXPOSE 80
 
