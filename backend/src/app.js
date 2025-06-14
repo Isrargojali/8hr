@@ -28,10 +28,14 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Health check endpoint (before auth middleware)
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'healthy' });
+});
+
 // Apply rate limiters
 // Public routes (no authentication needed)
 app.use('/auth',authLimiter,authRoutes);
-
 
 // Apply authentication to all other routes
 app.use(authenticate);
@@ -46,10 +50,5 @@ app.use('/dashboard', apiLimiter, dashBoardRoutes);
 app.use('/project', apiLimiter, projectRoutes);
 app.use('/advance-salary', apiLimiter, advanceSalaryRoutes);
 app.use('/users', apiLimiter, userRoutes);
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'healthy' });
-});
 
 export default app;
