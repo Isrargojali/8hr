@@ -52,6 +52,7 @@ services:
       NODE_ENV: production
       REACT_APP_API_URL: http://3.109.209.75:3000
       REACT_APP_BASE_URL: http://3.109.209.75
+      PORT: 80
     ports:
       - "80:80"
     restart: always
